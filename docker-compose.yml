@@ -1,0 +1,47 @@
+version: "3.5"
+services:
+  mtgcompanion:
+    #ports:
+    #  - "3000:3000"
+    build: ./image
+    environment:
+      - PGID=`id -g`
+      - PUID=`id -u`
+    volumes:
+      - "./data:/config/"
+    restart: unless-stopped
+    labels:
+      traefik.enable: true
+      traefik.docker.network: proxy
+      traefik.http.routers.mtgco-web.rule: Host(`collection.strueker.net`)
+      traefik.http.routers.mtgco-web.entryPoints: https
+      traefik.http.routers.mtgco-web.tls.certResolver: letsEncrypt
+      traefik.http.routers.mtgco-web.tls: true
+      traefik.http.routers.mtgco-web.middlewares: auth@file
+      traefik.http.routers.mtgco-web.service: mtgco-web
+      traefik.http.services.mtgco-web.loadbalancer.server.port: 80
+      traefik.http.routers.mtgco-client.rule: Host(`client.collection.strueker.net`)
+      traefik.http.routers.mtgco-client.entryPoints: https
+      traefik.http.routers.mtgco-client.tls.certResolver: letsEncrypt
+      traefik.http.routers.mtgco-client.tls: true
+      traefik.http.routers.mtgco-client.middlewares: auth@file,default@file
+      traefik.http.routers.mtgco-client.service: mtgco-client
+      traefik.http.services.mtgco-client.loadbalancer.server.port: 3000
+      traefik.http.routers.mtgco-api.rule: Host(`collection.strueker.net`) && PathPrefix(`/api`)
+      traefik.http.routers.mtgco-api.entryPoints: https
+      traefik.http.routers.mtgco-api.tls.certResolver: letsEncrypt
+      traefik.http.routers.mtgco-api.tls: true
+      traefik.http.routers.mtgco-api.middlewares: auth@file,default@file,mtgco-api-path@docker
+      traefik.http.routers.mtgco-api.service: mtgco-api
+      traefik.http.middlewares.mtgco-api-path.replacepathregex.regex: "^/api/(.*)"
+      traefik.http.middlewares.mtgco-api-path.replacepathregex.replacement: "/$$1"
+      traefik.http.services.mtgco-api.loadbalancer.server.port: 8080
+    networks:
+      - proxy
+
+networks:
+  proxy:
+    external: true
+    name: proxy
+
+
